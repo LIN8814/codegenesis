@@ -1,10 +1,10 @@
 """CodeGenesis 后端入口"""
 
+from fastapi import FastAPI
 
-def main():
-    print（"Hello, World!"）
-    print("Hello, CodeGenesis!")
+app = FastAPI(title="CodeGenesis")
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/")
+def root():
+    return {"message": "Hello, CodeGenesis!"}
