@@ -8,3 +8,7 @@ app = FastAPI(title="CodeGenesis")
 @app.get("/")
 def root():
     return {"message": "Hello, CodeGenesis!"}
+
+@app.post("/hello")
+def create_hello(name: str):
+    return {"message": f"Hello, {name}!"}
