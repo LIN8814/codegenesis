@@ -1,8 +1,8 @@
 """CodeGenesis 后端入口 —— 项目管理 API"""
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Literal, Optional
 from datetime import datetime
 import uuid
 
@@ -21,7 +21,20 @@ class ProjectCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="项目名称")
     description: str = Field(default="", max_length=500, description="项目需求描述")
-    tech_stack: list[str] = Field(default=["python"], description="技术栈")
+    tech_stack: list[str] = Field(default=["python"], min_length=1, description="技术栈")
+    project_type: Literal["web_app", "cli_tool", "api_service", "other"] = "web_app"
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_numeric(cls, v: str) -> str:  # 装饰器：该函数负责校验NAME字段
+        if v.isdigit():
+            raise ValueError("项目名称不能是纯数字")
+        return v.strip()
+
+    @model_validator(mode="after")
+    def validate_tech_stack(self):
+        self.tech_stack = list(dict.fromkeys(self.tech_stack))  # 去重
+        return self
 
 
 class Project(ProjectCreate):
