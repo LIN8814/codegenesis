@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from backend.config import settings
 import httpx
 
 
@@ -22,22 +23,6 @@ class LLMResponse:
     tokens_used: int  # 消耗的 token 数
 
 
-def _read_api_key() -> str:
-    """读取 API Key：优先环境变量，其次 .env 文件"""
-    key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if key:
-        return key
-    # 从 .env 文件读取（简单实现，Day 20 会升级成 pydantic-settings）
-    try:
-        with open(".env", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("DEEPSEEK_API_KEY="):
-                    return line.split("=", 1)[1].strip()
-    except FileNotFoundError:
-        pass
-    raise RuntimeError("未找到 DEEPSEEK_API_KEY，请检查 .env 文件")
-
 
 class LLMClient:
     """DeepSeek API 客户端"""
@@ -48,9 +33,9 @@ class LLMClient:
         base_url: str = "https://api.deepseek.com",
         model: str = "deepseek-chat",
     ):
-        self.api_key = api_key or _read_api_key()
-        self.base_url = base_url
-        self.model = model
+        self.api_key = api_key or settings.deepseek_api_key
+        self.base_url = base_url or settings.deepseek_base_url
+        self.model = model or settings.deepseek_model
 
     async def chat(
         self,
@@ -58,7 +43,7 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 4096,
     ) -> LLMResponse:
-        """发送对话请求到 LLM，返回回复"""
+        """发送对话请求到 LLM,返回回复"""
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{self.base_url}/v1/chat/completions",
