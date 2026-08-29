@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
 
     # 数据库（Phase 1 用到，先留默认值）
-    database_url: str = "sqlite:///./codegenesis.db"
+    database_url: str = "sqlite+aiosqlite:///./codegenesis.db"
     redis_url: str = "redis://localhost:6379/0"
 
     # 应用配置
