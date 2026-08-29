@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal, Optional
 from datetime import datetime
 import uuid
+import asyncio
 from backend.services.llm import LLMClient
 from backend.services.agent_service import LLMCodeGenAgent
 
@@ -52,6 +53,12 @@ class Project(ProjectCreate):
     status: str = "pending"
     created_at: str
     generated_code: Optional[str] = None
+
+
+class BatchGenerateRequest(BaseModel):
+    """批量生成请求体"""
+
+    project_ids: list[str] = Field(..., min_length=1)
 
 
 # ========== 内存数据库（Phase 1 之前先不用真数据库） ==========
@@ -121,3 +128,29 @@ async def generate_code(project_id: str):
     project.status = "completed"
 
     return project
+
+
+@app.post("/projects/batch-generate")
+async def batch_generate(request: BatchGenerateRequest):
+    """并发为多个项目生成代码，全部完成后一起返回"""
+    project_ids = request.project_ids
+    # 先检查所有 id 是否存在
+    missing = [
+        project_id for project_id in project_ids if project_id not in projects_db
+    ]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"项目不存在: {missing}")
+
+    async def generate_one(project_id: str):
+        """为单个项目生成代码（内部函数）"""
+        project = projects_db[project_id]
+        code = await code_gen_agent.generate_code(
+            project.description, project.tech_stack
+        )
+        project.generated_code = code
+        project.status = "completed"
+        return project_id
+
+    # 并发执行所有生成任务，一起等
+    await asyncio.gather(*[generate_one(project_id) for project_id in project_ids])
+    return {"completed": project_ids}
