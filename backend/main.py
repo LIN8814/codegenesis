@@ -5,6 +5,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal, Optional
 from datetime import datetime
 import uuid
+from backend.services.llm import LLMClient
+from backend.services.agent_service import LLMCodeGenAgent
+
+# 初始化 LLM 客户端和 Agent
+llm_client = LLMClient()
+code_gen_agent = LLMCodeGenAgent(llm_client)
 
 app = FastAPI(
     title="CodeGenesis",
@@ -21,7 +27,9 @@ class ProjectCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="项目名称")
     description: str = Field(default="", max_length=500, description="项目需求描述")
-    tech_stack: list[str] = Field(default=["python"], min_length=1, description="技术栈")
+    tech_stack: list[str] = Field(
+        default=["python"], min_length=1, description="技术栈"
+    )
     project_type: Literal["web_app", "cli_tool", "api_service", "other"] = "web_app"
 
     @field_validator("name")
@@ -99,3 +107,17 @@ async def delete_project(project_id: str):
     if project_id not in projects_db:
         raise HTTPException(status_code=404, detail="项目不存在")
     del projects_db[project_id]
+
+
+@app.post("/projects/{project_id}/generate", response_model=Project)
+async def generate_code(project_id: str):
+    """触发 Agent 为项目生成代码"""
+    if project_id not in projects_db:
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    project = projects_db[project_id]
+    code = await code_gen_agent.generate_code(project.description, project.tech_stack)
+    project.generated_code = code
+    project.status = "completed"
+
+    return project
