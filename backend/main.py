@@ -69,7 +69,7 @@ projects_db: dict[str, Project] = {}
 # ========== CRUD 接口 ==========
 
 
-@app.post("/projects", response_model=Project, status_code=201)
+@app.post("/projects", response_model=Project, status_code=201, tags=["项目管理"])
 async def create_project(project: ProjectCreate):
     """创建一个新项目，Agent 将根据需求生成代码"""
     project_id = str(uuid.uuid4())[:8]  # 生成8位随机ID
@@ -82,13 +82,13 @@ async def create_project(project: ProjectCreate):
     return new_project
 
 
-@app.get("/projects", response_model=list[Project])
+@app.get("/projects", response_model=list[Project], tags=["项目管理"])
 async def list_projects():
     """列出所有项目"""
     return list(projects_db.values())
 
 
-@app.get("/projects/{project_id}", response_model=Project)
+@app.get("/projects/{project_id}", response_model=Project, tags=["项目管理"])
 async def get_project(project_id: str):
     """获取单个项目详情"""
     if project_id not in projects_db:
@@ -96,7 +96,7 @@ async def get_project(project_id: str):
     return projects_db[project_id]
 
 
-@app.put("/projects/{project_id}", response_model=Project)
+@app.put("/projects/{project_id}", response_model=Project, tags=["项目管理"])
 async def update_project(project_id: str, update: ProjectCreate):
     """更新项目信息"""
     if project_id not in projects_db:
@@ -108,7 +108,7 @@ async def update_project(project_id: str, update: ProjectCreate):
     return project
 
 
-@app.delete("/projects/{project_id}", status_code=204)
+@app.delete("/projects/{project_id}", status_code=204, tags=["项目管理"])
 async def delete_project(project_id: str):
     """删除项目"""
     if project_id not in projects_db:
@@ -116,7 +116,7 @@ async def delete_project(project_id: str):
     del projects_db[project_id]
 
 
-@app.post("/projects/{project_id}/generate", response_model=Project)
+@app.post("/projects/{project_id}/generate", response_model=Project, tags=["AI生成"])
 async def generate_code(project_id: str):
     """触发 Agent 为项目生成代码"""
     if project_id not in projects_db:
@@ -130,7 +130,7 @@ async def generate_code(project_id: str):
     return project
 
 
-@app.post("/projects/batch-generate")
+@app.post("/projects/batch-generate", tags=["AI生成"])
 async def batch_generate(request: BatchGenerateRequest):
     """并发为多个项目生成代码，全部完成后一起返回"""
     project_ids = request.project_ids
