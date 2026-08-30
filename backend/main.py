@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 import asyncio
-
+from backend.services.cache import CacheService
 from backend.config import settings
 from backend.database import init_db, get_db
 from backend.models import Project as ProjectModel
@@ -16,6 +16,7 @@ from backend.services.agent_service import LLMCodeGenAgent
 # 初始化 LLM 客户端和 Agent
 llm_client = LLMClient()
 code_gen_agent = LLMCodeGenAgent(llm_client)
+cache_service = CacheService()
 
 app = FastAPI(
     title="CodeGenesis",
@@ -46,7 +47,7 @@ async def create_project(project: ProjectCreate, db: AsyncSession = Depends(get_
         tech_stack=project.tech_stack,
     )
     db.add(new_project)  # 加入会话
-    await db.commit()    # 提交（真正写入数据库）
+    await db.commit()  # 提交（真正写入数据库）
     await db.refresh(new_project)  # 刷新，拿到数据库生成的 created_at
     return new_project
 
@@ -97,22 +98,40 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/projects/{project_id}/generate", response_model=Project, tags=["AI生成"])
 async def generate_code(project_id: str, db: AsyncSession = Depends(get_db)):
-    """触发 Agent 为项目生成代码"""
+    """触发 Agent 为项目生成代码（带缓存：相同需求不重复调 AI）"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="项目不存在")
 
+    # 1. 计算缓存 key（需求 + 技术栈 → 哈希）
+    cache_key = cache_service.make_key(
+        "generate", project.description, str(project.tech_stack)
+    )
+
+    # 2. 先查缓存
+    cached_code = await cache_service.get(cache_key)
+    if cached_code:
+        project.generated_code = cached_code
+        project.status = "completed"
+        await db.commit()
+        await db.refresh(project)
+        return project
+
+    # 3. 未命中：调用 AI 生成，写入缓存
     code = await code_gen_agent.generate_code(project.description, project.tech_stack)
+    await cache_service.set(cache_key, code, ttl=3600)
+
     project.generated_code = code
     project.status = "completed"
     await db.commit()
     await db.refresh(project)
-
     return project
 
 
 @app.post("/projects/batch-generate", tags=["AI生成"])
-async def batch_generate(request: BatchGenerateRequest, db: AsyncSession = Depends(get_db)):
+async def batch_generate(
+    request: BatchGenerateRequest, db: AsyncSession = Depends(get_db)
+):
     """并发为多个项目生成代码，全部完成后一起返回"""
     project_ids = request.project_ids
 
