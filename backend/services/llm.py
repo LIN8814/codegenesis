@@ -2,8 +2,10 @@
 
 import os
 from dataclasses import dataclass
-from backend.config import settings
+
 import httpx
+
+from backend.config import settings
 
 
 @dataclass
@@ -21,7 +23,6 @@ class LLMResponse:
     content: str  # AI 生成的内容
     model: str  # 使用的模型名
     tokens_used: int  # 消耗的 token 数
-
 
 
 class LLMClient:

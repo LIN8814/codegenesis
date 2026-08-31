@@ -1,6 +1,8 @@
 """数据库连接与初始化"""
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
+
 from backend.config import settings
 from backend.models import Base
 

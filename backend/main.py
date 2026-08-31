@@ -1,17 +1,19 @@
 """CodeGenesis 后端入口 —— 项目管理 API（数据库版）"""
 
-from fastapi import FastAPI, HTTPException, Depends
+import asyncio
+import uuid
+
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
-import asyncio
-from backend.services.cache import CacheService
+
 from backend.config import settings
-from backend.database import init_db, get_db
+from backend.database import get_db, init_db
 from backend.models import Project as ProjectModel
-from backend.schemas import ProjectCreate, Project, BatchGenerateRequest
-from backend.services.llm import LLMClient
+from backend.schemas import BatchGenerateRequest, Project, ProjectCreate
 from backend.services.agent_service import LLMCodeGenAgent
+from backend.services.cache import CacheService
+from backend.services.llm import LLMClient
 
 # 初始化 LLM 客户端和 Agent
 llm_client = LLMClient()

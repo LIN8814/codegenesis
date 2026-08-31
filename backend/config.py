@@ -1,6 +1,7 @@
 """应用配置管理 —— 所有配置集中在这里，从 .env 读取"""
 
 import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +44,7 @@ class ProdSettings(Settings):
 
 
 # 根据环境变量 APP_ENV 选择配置（默认开发环境）
+settings: Settings
 if os.getenv("APP_ENV") == "production":
     settings = ProdSettings()
 else:

@@ -1,7 +1,8 @@
 """数据库模型"""
 
 from datetime import datetime
-from sqlalchemy import String, Text, Integer, DateTime, ForeignKey, JSON, func
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
