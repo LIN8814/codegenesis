@@ -3,7 +3,7 @@
 import asyncio
 import uuid
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,36 @@ app = FastAPI(
     description="AI Agent 协作式软件开发平台",
     version="0.2.0",
 )
+
+import time
+import logging
+
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    """记录每个请求的处理耗时"""
+    start = time.perf_counter()
+    response = await call_next(request)  # 放行，调用真正的接口
+    elapsed = (time.perf_counter() - start) * 1000
+    print(f"[中间件]{request.method} {request.url.path} 耗时: {elapsed:.0f}ms")
+    return response
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("codegenesis.middleware ")
+
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    """记录每个请求的处理耗时"""
+    start = time.perf_counter()
+    response = await call_next(request)  # 放行，调用真正的接口
+    elapsed = (time.perf_counter() - start) * 1000
+    logger.info(f"{request.method} {request.url.path} 耗时: {elapsed:.0f}ms")
+    return response
 
 
 @app.on_event("startup")
