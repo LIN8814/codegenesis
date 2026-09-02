@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from backend.schemas import APIError
+from backend.errors import CodeGenesisError
 
 logger = logging.getLogger("codegenesis")
 
@@ -41,3 +42,18 @@ def register_exception_handlers(app: FastAPI) -> None:
                 timestamp=datetime.now().isoformat(),
             ).model_dump(),
         )
+
+    @app.exception_handler(CodeGenesisError)
+    async def codegenesis_exception_handler(request: Request, exc: CodeGenesisError):
+        """处理业务异常(LLMAPIError 等)，返回对应错误码"""
+        logger.warning(f"{request.method} {request.url.path} → {exc.code}")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=APIError(
+                code=exc.code,
+                message=exc.message,
+                status=exc.status_code,
+                timestamp=datetime.now().isoformat(),
+            ).model_dump(),
+        )
+

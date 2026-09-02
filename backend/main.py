@@ -1,17 +1,20 @@
 """CodeGenesis 后端入口 —— 项目管理 API（数据库版）"""
 
 import asyncio
+import logging
+import time
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
 from backend.database import get_db, init_db
 from backend.models import Project as ProjectModel
 from backend.schemas import BatchGenerateRequest, Project, ProjectCreate
+from backend.errors import ProjectNotFoundError
 from backend.services.agent_service import LLMCodeGenAgent
 from backend.services.cache import CacheService
 from backend.services.llm import LLMClient
@@ -21,6 +24,12 @@ from backend.exceptions import register_exception_handlers
 llm_client = LLMClient()
 code_gen_agent = LLMCodeGenAgent(llm_client)
 cache_service = CacheService()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("codegenesis.main")
 
 app = FastAPI(
     title="CodeGenesis",
@@ -41,27 +50,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-import time
-import logging
-
-
-@app.middleware("http")
-async def log_request(request: Request, call_next):
-    """记录每个请求的处理耗时"""
-    start = time.perf_counter()
-    response = await call_next(request)  # 放行，调用真正的接口
-    elapsed = (time.perf_counter() - start) * 1000
-    print(f"[中间件]{request.method} {request.url.path} 耗时: {elapsed:.0f}ms")
-    return response
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger("codegenesis.middleware ")
 
 
 @app.middleware("http")
@@ -115,7 +103,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     """获取单个项目详情"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+        raise ProjectNotFoundError("项目不存在")
     return project
 
 
@@ -126,7 +114,7 @@ async def update_project(
     """更新项目信息"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+        raise ProjectNotFoundError("项目不存在")
     project.name = update.name
     project.description = update.description
     project.tech_stack = update.tech_stack
@@ -140,7 +128,7 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
     """删除项目"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+        raise ProjectNotFoundError("项目不存在")
     await db.delete(project)
     await db.commit()
 
@@ -150,7 +138,7 @@ async def generate_code(project_id: str, db: AsyncSession = Depends(get_db)):
     """触发 Agent 为项目生成代码（带缓存：相同需求不重复调 AI）"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
+        raise ProjectNotFoundError("项目不存在")
 
     # 1. 计算缓存 key（需求 + 技术栈 → 哈希）
     cache_key = cache_service.make_key(
@@ -189,7 +177,7 @@ async def batch_generate(
     for project_id in project_ids:
         project = await db.get(ProjectModel, project_id)
         if project is None:
-            raise HTTPException(status_code=404, detail=f"项目不存在: {project_id}")
+            raise ProjectNotFoundError(f"项目不存在: {project_id}")
         projects.append(project)
 
     async def generate_one(project: ProjectModel):
