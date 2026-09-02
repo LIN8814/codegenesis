@@ -6,6 +6,7 @@ import uuid
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
 from backend.database import get_db, init_db
@@ -14,6 +15,7 @@ from backend.schemas import BatchGenerateRequest, Project, ProjectCreate
 from backend.services.agent_service import LLMCodeGenAgent
 from backend.services.cache import CacheService
 from backend.services.llm import LLMClient
+from backend.exceptions import register_exception_handlers
 
 # 初始化 LLM 客户端和 Agent
 llm_client = LLMClient()
@@ -25,6 +27,21 @@ app = FastAPI(
     description="AI Agent 协作式软件开发平台",
     version="0.2.0",
 )
+
+register_exception_handlers(app)
+
+# CORS: 允许前端跨域访问
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # React 开发服务器
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 import time
 import logging

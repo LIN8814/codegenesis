@@ -49,3 +49,11 @@ class BatchGenerateRequest(BaseModel):
     """批量生成请求体"""
 
     project_ids: list[str] = Field(..., min_length=1)
+
+
+class APIError(BaseModel):
+    """统一的错误响应格式"""
+    code: str
+    message: str
+    status: int
+    timestamp: str
