@@ -37,3 +37,10 @@ class ProjectNotFoundError(CodeGenesisError):
 
     code = "PROJECT_NOT_FOUND"
     status_code = 404
+
+
+class InvalidTokenError(CodeGenesisError):
+    """token 无效或已过期（签名验证失败）"""
+
+    code = "INVALID_TOKEN"
+    status_code = 401

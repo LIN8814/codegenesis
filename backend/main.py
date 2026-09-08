@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import init_db
 from backend.exceptions import register_exception_handlers
-from backend.routers import projects, stats
+from backend.routers import projects, stats, auth
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,4 +56,5 @@ async def on_startup():
 
 # 注册业务路由
 app.include_router(projects.router)
-app.include_router(stats.router)    
+app.include_router(stats.router)
+app.include_router(auth.router)
