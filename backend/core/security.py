@@ -25,3 +25,21 @@ def create_access_token(user_id: str, role: str = "member") -> str:
 def verify_token(token: str) -> dict:
     """验证 JWT，返回 payload（签名错误/过期都会抛异常）"""
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+
+from passlib.context import CryptContext
+
+# bcrypt 哈希上下文（passlib 的配置对象）
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    """明文密码 → 哈希值（bcrypt 只用前 72 字节，按字节截断）"""
+    encoded = password.encode("utf-8")[:72]
+    return pwd_context.hash(encoded)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证：用户输入的明文密码 vs 数据库存的哈希"""
+    encoded = plain_password.encode("utf-8")[:72]
+    return pwd_context.verify(encoded, hashed_password)

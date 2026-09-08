@@ -44,3 +44,10 @@ class InvalidTokenError(CodeGenesisError):
 
     code = "INVALID_TOKEN"
     status_code = 401
+
+
+class UserAlreadyExistsError(CodeGenesisError):
+    """注册时用户名或邮箱已存在"""
+
+    code = "USER_ALREADY_EXISTS"
+    status_code = 409  # Conflict：资源冲突
