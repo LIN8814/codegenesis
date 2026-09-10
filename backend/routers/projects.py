@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.deps import get_current_user
 from backend.database import get_db
-from backend.models import Project as ProjectModel
+from backend.models import Project as ProjectModel, User
 from backend.schemas import BatchGenerateRequest, Project, ProjectCreate
 from backend.errors import ProjectNotFoundError
 from backend.services.agent_service import LLMCodeGenAgent
@@ -26,7 +27,11 @@ cache_service = CacheService()
 
 
 @router.post("", response_model=Project, status_code=201)
-async def create_project(project: ProjectCreate, db: AsyncSession = Depends(get_db)):
+async def create_project(
+    project: ProjectCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """创建一个新项目，Agent 将根据需求生成代码"""
     project_id = str(uuid.uuid4())[:8]  # 生成8位随机ID
     new_project = ProjectModel(
@@ -42,7 +47,10 @@ async def create_project(project: ProjectCreate, db: AsyncSession = Depends(get_
 
 
 @router.get("", response_model=list[Project])
-async def list_projects(db: AsyncSession = Depends(get_db)):
+async def list_projects(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """列出所有项目（最新在前）"""
     result = await db.execute(
         select(ProjectModel).order_by(ProjectModel.created_at.desc())
@@ -51,7 +59,11 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{project_id}", response_model=Project)
-async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_project(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """获取单个项目详情"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
@@ -61,7 +73,10 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.put("/{project_id}", response_model=Project)
 async def update_project(
-    project_id: str, update: ProjectCreate, db: AsyncSession = Depends(get_db)
+    project_id: str,
+    update: ProjectCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """更新项目信息"""
     project = await db.get(ProjectModel, project_id)
@@ -76,7 +91,11 @@ async def update_project(
 
 
 @router.delete("/{project_id}", status_code=204)
-async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_project(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """删除项目"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
@@ -86,7 +105,11 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{project_id}/generate", response_model=Project)
-async def generate_code(project_id: str, db: AsyncSession = Depends(get_db)):
+async def generate_code(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """触发 Agent 为项目生成代码（带缓存：相同需求不重复调 AI）"""
     project = await db.get(ProjectModel, project_id)
     if project is None:
@@ -119,7 +142,9 @@ async def generate_code(project_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/batch-generate")
 async def batch_generate(
-    request: BatchGenerateRequest, db: AsyncSession = Depends(get_db)
+    request: BatchGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """并发为多个项目生成代码，全部完成后一起返回"""
     project_ids = request.project_ids

@@ -1,25 +1,18 @@
 """认证路由 —— 注册/登录/当前用户"""
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.security import (
-    create_access_token,
-    hash_password,
-    verify_password,
-    verify_token,
-)
+from backend.core.deps import get_current_user, require_role
+from backend.core.security import create_access_token, hash_password, verify_password
 from backend.database import get_db
 from backend.errors import InvalidTokenError, UserAlreadyExistsError
 from backend.models import User
 from backend.schemas import UserCreate
 
 router = APIRouter(prefix="/auth", tags=["认证"])
-
-# 告诉 FastAPI：token 从 Authorization: Bearer xxx 里取
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 @router.post("/token")
@@ -42,13 +35,27 @@ async def login(
 
 
 @router.get("/me")
-async def get_me(token: str = Depends(oauth2_scheme)):
-    """测试接口：带着 token 访问，返回你的身份"""
-    try:
-        payload = verify_token(token)
-    except Exception:
-        raise InvalidTokenError("无效的凭证")
-    return {"user_id": payload["sub"], "role": payload["role"]}
+async def get_me(current_user: User = Depends(get_current_user)):
+    """返回当前登录用户的信息"""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role,
+    }
+
+
+@router.get("/users")
+async def list_users(
+    current_user: User = Depends(require_role("owner")),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出所有用户（仅 owner 角色可访问）"""
+    result = await db.execute(select(User))
+    return [
+        {"id": u.id, "username": u.username, "email": u.email, "role": u.role}
+        for u in result.scalars().all()
+    ]
 
 
 @router.post("/register", status_code=201)

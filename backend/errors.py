@@ -51,3 +51,10 @@ class UserAlreadyExistsError(CodeGenesisError):
 
     code = "USER_ALREADY_EXISTS"
     status_code = 409  # Conflict：资源冲突
+
+
+class PermissionDeniedError(CodeGenesisError):
+    """已登录但权限不足"""
+
+    code = "PERMISSION_DENIED"
+    status_code = 403  # Forbidden：我知道你是谁，但你不能干这个
