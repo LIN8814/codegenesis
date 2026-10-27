@@ -37,7 +37,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # 宿主端口用 6381，避开本机其他项目占用的 6379；
+      # backend 容器内部仍通过服务名 redis:6379 访问，不受影响
+      - "127.0.0.1:6381:6379"
     volumes:
       - redisdata:/data
 

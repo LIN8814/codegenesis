@@ -1,0 +1,13 @@
+[run]
+# SQLAlchemy 异步引擎通过 greenlet 切换上下文，
+# 只声明 thread 会漏掉 await 之后的代码，导致覆盖率虚低
+concurrency = thread,greenlet
+
+# 测试代码和学习练习不算应用覆盖率
+omit =
+    backend/tests/*
+    backend/exercises/*
+    backend/debug_practice.py
+
+[report]
+show_missing = true
